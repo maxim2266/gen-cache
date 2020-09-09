@@ -1,16 +1,13 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"time"
 )
 
-type K = string
-type V = string
-
-type Fn = func(K) (V, error)
+type K = int
+type V = int
 
 type Cache struct {
 	mu    sync.Mutex
@@ -19,30 +16,26 @@ type Cache struct {
 
 	size  int
 	ttl   time.Duration
-	fetch Fn
+	fetch func(K) (V, error)
 }
 
 type CacheNode struct {
+	prev, next *CacheNode
+	once       sync.Once
+
 	key   K
 	value V
 	err   error
 	ts    time.Time
-
-	once       sync.Once
-	prev, next *CacheNode
 }
 
-func CacheFunc(n int, ttl time.Duration, fn Fn) Fn {
-	return New(n, ttl, fn).Get
-}
-
-func New(size int, ttl time.Duration, fetch Fn) *Cache {
-	if size < 2 || size > 16*1024*1024 {
-		panic(fmt.Errorf("attempted to create a cache (K -> V) with invalid capacity of %d items", size))
+func New(size int, ttl time.Duration, fetch func(K) (V, error)) *Cache {
+	if size < 1 || size > 16*1024*1024 {
+		panic(fmt.Sprintf("attempted to create a cache (K -> V) with invalid capacity of %d items", size))
 	}
 
 	if fetch == nil {
-		panic(errors.New("attempted to create a cache (K -> V) with null fetch() function"))
+		panic("attempted to create a cache (K -> V) with null fetch() function")
 	}
 
 	return &Cache{
@@ -135,8 +128,7 @@ func (c *Cache) lruAdd(node *CacheNode) {
 		c.lru = node
 		node.next, node.prev = node, node
 	} else {
-		node.next, node.prev = c.lru.next, c.lru.prev
+		node.next, node.prev = c.lru.next, c.lru
 		node.next.prev, node.prev.next = node, node
-		c.lru = node.prev // bubble up
 	}
 }
