@@ -112,7 +112,7 @@ func (c *Cache) deleteNode(node *CacheNode) {
 }
 
 func (c *Cache) lruRemove(node *CacheNode) {
-	if node.next == node.prev {
+	if node.next == node {
 		c.lru = nil
 	} else {
 		if c.lru == node {

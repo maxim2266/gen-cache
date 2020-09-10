@@ -1,29 +1,28 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
 )
 
 // tracing backend
-type intBackend struct {
-	calls int
+type tracingBackend struct {
 	trace []int
 }
 
-func (b *intBackend) fn(key int) (int, error) {
-	b.calls++
+func (b *tracingBackend) fn(key int) (int, error) {
+	b.trace = append(b.trace, key)
 
 	if b.validKey(key) {
-		b.trace = append(b.trace, key)
 		return -key, nil
 	}
 
 	return 0, fmt.Errorf("key not found: %d", key)
 }
 
-func (b *intBackend) validKey(key int) bool {
+func (b *tracingBackend) validKey(key int) bool {
 	return key >= 0 && key < 100
 }
 
@@ -47,104 +46,128 @@ func (b *intBackendMT) validKey(key int) bool {
 	return key >= 0 && key < 100
 }
 
-func matchTraces(prefix string, got, exp []int) error {
+func matchTraces(got, exp []int) error {
 	if len(got) != len(exp) {
-		return fmt.Errorf("%s: trace mismatch: %v instead of %v", prefix, got, exp)
+		return fmt.Errorf("trace mismatch: %v instead of %v", got, exp)
 	}
 
 	for i, v := range got {
 		if v != exp[i] {
-			return fmt.Errorf("%s: trace mismatch @ %d: %d instead of %d", prefix, i, v, exp[i])
+			return fmt.Errorf("trace mismatch @ %d: %d instead of %d", i, v, exp[i])
 		}
 	}
 
 	return nil
 }
 
-type C struct {
-	key   int
-	err   bool
-	value int
-}
+// filling a cache
+func fill(fn func(int) (int, error), keys []int, valid func(int) bool) error {
+	for _, k := range keys {
+		v, err := fn(k)
 
-func matchContent(prefix string, cache *Cache, cont []C) error {
-	// initial checks
-	if len(cache.cache) != len(cont) {
-		return fmt.Errorf("%s: unexpected size of cache map: %d instead of %d",
-			prefix, len(cache.cache), len(cont))
+		if valid(k) {
+			if err != nil {
+				return fmt.Errorf("unexpected error while getting key %d: %w", k, err)
+			}
+
+			if v != -k {
+				return fmt.Errorf("unexpected value %d for key %d", v, k)
+			}
+		} else if err == nil {
+			return fmt.Errorf("missing error for key %d", k)
+		}
 	}
 
-	if len(cont) == 0 {
-		if cache.lru != nil {
-			return fmt.Errorf("%s: unexpected content in LRU: key %d", prefix, cache.lru.key)
+	return nil
+}
+
+// validate cache content by inspecting its internals; in LRU order
+func checkState(c *Cache, keys []int, valid func(int) bool) error {
+	// initial checks
+	if len(c.cache) != len(keys) {
+		return fmt.Errorf("unexpected size of cache map: %d instead of %d",
+			len(c.cache), len(keys))
+	}
+
+	if len(keys) == 0 {
+		if c.lru != nil {
+			return fmt.Errorf("unexpected content in LRU: key %d", c.lru.key)
 		}
 
 		return nil
 	}
 
-	// validate content
-	lnode := cache.lru
+	p := c.lru
 
-	for i, c := range cont {
-		// cache map validation
-		node, found := cache.cache[c.key]
+	// validate content
+	for i, k := range keys {
+		node, found := c.cache[k]
 
 		if !found {
-			return fmt.Errorf("%s: key %d not found in cache", prefix, c.key)
+			return fmt.Errorf("missing cache node for key %d", k)
 		}
 
 		if node == nil {
-			return fmt.Errorf("%s: nil node for key %d", prefix, c.key)
+			return fmt.Errorf("nil cache node for key %d", k)
 		}
 
-		if err := checkNode(prefix+": cache map", &c, node); err != nil {
-			return err
+		if node.key != k {
+			return fmt.Errorf("unexpected key %d in node for key %d", node.key, k)
 		}
 
-		// LRU node validation
-		if err := checkNode(prefix+": LRU", &c, lnode); err != nil {
-			return err
+		if valid(k) {
+			if node.value != -k {
+				return fmt.Errorf("unexpected value in node %d: %d instead of %d", k, node.value, -k)
+			}
+		} else if node.err == nil {
+			return fmt.Errorf("missing error in node %d", k)
 		}
 
-		// check LRU node pointers
-		if lnode.next.prev != lnode || lnode.prev.next != lnode {
-			return fmt.Errorf("%s: invalid LRU node connections (key %d)", prefix, lnode.key)
+		// check LRU node
+		if p != node {
+			return fmt.Errorf("LRU and cache node mismatch: LRU key %d, cache map key %d", p.key, node.key)
 		}
 
-		// prev LRU node
-		if lnode = lnode.prev; lnode == cache.lru && i != len(cont)-1 {
-			return fmt.Errorf("%s: LRU list ends at key %d", prefix, c.key)
+		if p.next.prev != p || p.prev.next != p {
+			return fmt.Errorf("invalid node links for key %d", k)
+		}
+
+		// move prev LRU node
+		if p = p.prev; p == c.lru && i != len(keys)-1 {
+			return fmt.Errorf("LRU list terminates at key %d", k)
 		}
 	}
 
-	if lnode != cache.lru {
-		return fmt.Errorf("%s: LRU list continues with key %d", prefix, lnode.key)
-	}
-
-	return nil
-}
-
-func checkNode(prefix string, c *C, node *CacheNode) error {
-	if node.key != c.key {
-		return fmt.Errorf("%s: key mismatch: %d instead of %d", prefix, node.key, c.key)
-	}
-
-	if c.err && node.err == nil {
-		return fmt.Errorf("%s: missing error for key %d", prefix, c.key)
-	} else if !c.err && node.value != c.value {
-		return fmt.Errorf("%s: unexpected value for key %d: %c instead of %c",
-			prefix, c.key, node.value, c.value)
+	// check LRU pointer
+	if p != c.lru {
+		return errors.New("LRU list is longer than cache map")
 	}
 
 	return nil
 }
 
+// check if the cache is empty
+func assertEmpty(c *Cache) error {
+	if c.lru != nil {
+		return errors.New("non-null LRU pointer")
+	}
+
+	if len(c.cache) != 0 {
+		return fmt.Errorf("unexpected cache map size: %d", len(c.cache))
+	}
+
+	return nil
+}
+
+// dump cache LRU list, from least to most recent
 func dumpLRU(cache *Cache) string {
 	if cache.lru == nil {
-		return "(empty)"
+		return "LRU: (empty)"
 	}
 
 	var res strings.Builder
+
+	res.WriteString("LRU:")
 
 	for node := cache.lru; ; {
 		fmt.Fprintf(&res,
@@ -159,77 +182,24 @@ func dumpLRU(cache *Cache) string {
 	return res.String()
 }
 
-func getOne(prefix string, cache *Cache, key int) error {
-	value, err := cache.Get(key)
-
-	if err != nil {
-		return fmt.Errorf("%s: unexpected error: %w", prefix, err)
-	}
-
-	v := -key
-
-	if value != v {
-		return fmt.Errorf("%s: unexpected value: %d instead of %d", prefix, value, v)
-	}
-
-	// internals
+func dumpRevLRU(cache *Cache) string {
 	if cache.lru == nil {
-		return fmt.Errorf("%s: nil LRU pointer", prefix)
+		return "LRU: (empty)"
 	}
 
-	if cache.lru.next == nil || !(cache.lru.next == cache.lru.prev && cache.lru.next == cache.lru) {
-		return fmt.Errorf("%s: invalid LRU list", prefix)
-	}
+	var res strings.Builder
 
-	if len(cache.cache) != 1 {
-		return fmt.Errorf("%s: unexpected cache size: %d", prefix, len(cache.cache))
-	}
+	res.WriteString("LRU (reverse order):")
 
-	node, ok := cache.cache[key]
+	for node := cache.lru.next; ; node = node.next {
+		fmt.Fprintf(&res,
+			"\n{ key: %v, value: %v, error: %v }",
+			node.key, node.value, node.err)
 
-	if !ok {
-		return fmt.Errorf("%s: missing cache record for key %d", prefix, key)
-	}
-
-	if node == nil {
-		return fmt.Errorf("%s: nil node for key %d", prefix, key)
-	}
-
-	if node.value != v {
-		return fmt.Errorf("%s: unexpected cache content: %d instead of %d", prefix, node.value, v)
-	}
-
-	return nil
-}
-
-func assertEmpty(prefix string, cache *Cache) error {
-	if cache.lru != nil {
-		return fmt.Errorf("%s: non-null LRU pointer", prefix)
-	}
-
-	if len(cache.cache) != 0 {
-		return fmt.Errorf("%s: unexpected cache size: %d", prefix, len(cache.cache))
-	}
-
-	return nil
-}
-
-func fillN(cache *Cache, N int) ([]C, error) {
-	res := make([]C, 0, N)
-
-	for i := 0; i < N; i++ {
-		v, err := cache.Get(i)
-
-		if err != nil {
-			return nil, fmt.Errorf("unexpected error @ %d: %w", i, err)
+		if node == cache.lru {
+			break
 		}
-
-		if v != -i {
-			return nil, fmt.Errorf("value mismatch @ %d: %d instead of %d", i, v, -i)
-		}
-
-		res = append(res, C{key: i, value: v})
 	}
 
-	return res, nil
+	return res.String()
 }
