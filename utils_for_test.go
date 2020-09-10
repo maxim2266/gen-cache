@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
 
-// backend with hit/miss counters
+// tracing backend
 type intBackend struct {
 	calls int
 	trace []int
@@ -14,7 +15,7 @@ type intBackend struct {
 func (b *intBackend) fn(key int) (int, error) {
 	b.calls++
 
-	if key >= 0 && key < 100 {
+	if b.validKey(key) {
 		b.trace = append(b.trace, key)
 		return -key, nil
 	}
@@ -22,9 +23,28 @@ func (b *intBackend) fn(key int) (int, error) {
 	return 0, fmt.Errorf("key not found: %d", key)
 }
 
-func (b *intBackend) clear() {
-	b.calls = 0
-	b.trace = b.trace[:0]
+func (b *intBackend) validKey(key int) bool {
+	return key >= 0 && key < 100
+}
+
+// thread-safe backend with hit/miss counters
+type intBackendMT struct {
+	hit, miss uint64
+}
+
+func (b *intBackendMT) fn(key int) (int, error) {
+	if b.validKey(key) {
+		atomic.AddUint64(&b.hit, 1)
+		return -key, nil
+	}
+
+	atomic.AddUint64(&b.miss, 1)
+
+	return 0, fmt.Errorf("key not found: %d", key)
+}
+
+func (b *intBackendMT) validKey(key int) bool {
+	return key >= 0 && key < 100
 }
 
 func matchTraces(prefix string, got, exp []int) error {
@@ -192,4 +212,24 @@ func assertEmpty(prefix string, cache *Cache) error {
 	}
 
 	return nil
+}
+
+func fillN(cache *Cache, N int) ([]C, error) {
+	res := make([]C, 0, N)
+
+	for i := 0; i < N; i++ {
+		v, err := cache.Get(i)
+
+		if err != nil {
+			return nil, fmt.Errorf("unexpected error @ %d: %w", i, err)
+		}
+
+		if v != -i {
+			return nil, fmt.Errorf("value mismatch @ %d: %d instead of %d", i, v, -i)
+		}
+
+		res = append(res, C{key: i, value: v})
+	}
+
+	return res, nil
 }
