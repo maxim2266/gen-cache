@@ -30,7 +30,7 @@ type CacheNode struct {
 }
 
 func New(size int, ttl time.Duration, fetch func(K) (V, error)) *Cache {
-	if size < 1 || size > 16*1024*1024 {
+	if size < 2 || size > 16*1024*1024 {
 		panic(fmt.Sprintf("attempted to create a cache (K -> V) with invalid capacity of %d items", size))
 	}
 
@@ -68,7 +68,9 @@ func (c *Cache) Delete(key K) {
 	defer c.mu.Unlock()
 
 	if node := c.cache[key]; node != nil {
-		c.deleteNode(node)
+		c.lruRemove(node)
+		node.next, node.prev = nil, nil // help gc
+		delete(c.cache, key)
 	}
 }
 
@@ -85,13 +87,26 @@ func (c *Cache) get(key K) (node *CacheNode) {
 		}
 	} else { // not found
 		if len(c.cache) == c.size { // cache full
-			c.deleteNode(c.lru)
+			// delete the least recent
+			node = c.lru
+			c.lru = node.prev
+			node.prev.next, node.next.prev = node.next, node.prev
+			node.next, node.prev = nil, nil // help gc
+			delete(c.cache, node.key)
 		}
 
 		node = c.newNode(key)
 	}
 
-	c.lruAdd(node)
+	// add the node as the most recent
+	if c.lru == nil {
+		c.lru = node
+		node.next, node.prev = node, node
+	} else {
+		node.next, node.prev = c.lru.next, c.lru
+		node.next.prev, node.prev.next = node, node
+	}
+
 	return
 }
 
@@ -105,12 +120,6 @@ func (c *Cache) newNode(key K) (node *CacheNode) {
 	return
 }
 
-func (c *Cache) deleteNode(node *CacheNode) {
-	c.lruRemove(node)
-	node.next, node.prev = nil, nil // help gc
-	delete(c.cache, node.key)
-}
-
 func (c *Cache) lruRemove(node *CacheNode) {
 	if node.next == node {
 		c.lru = nil
@@ -120,15 +129,5 @@ func (c *Cache) lruRemove(node *CacheNode) {
 		}
 
 		node.prev.next, node.next.prev = node.next, node.prev
-	}
-}
-
-func (c *Cache) lruAdd(node *CacheNode) {
-	if c.lru == nil {
-		c.lru = node
-		node.next, node.prev = node, node
-	} else {
-		node.next, node.prev = c.lru.next, c.lru
-		node.next.prev, node.prev.next = node, node
 	}
 }

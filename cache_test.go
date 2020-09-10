@@ -219,7 +219,7 @@ func TestConcurrentAccess(t *testing.T) {
 		calls   uint64
 	)
 
-	cache := New(cacheSize, 10*time.Millisecond, backend.fn)
+	cache := New(cacheSize, 500*time.Microsecond, backend.fn)
 
 	get := func(k int) (int, error) {
 		atomic.AddUint64(&calls, 1)
@@ -240,7 +240,7 @@ func TestConcurrentAccess(t *testing.T) {
 
 			ts := time.Now()
 
-			for time.Since(ts) < 500*time.Millisecond {
+			for time.Since(ts) < time.Second {
 				for _, k := range keys {
 					v, err := get(k)
 
