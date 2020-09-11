@@ -41,12 +41,12 @@ while [ $# -gt 0 ]; do
 			shift 2
 			;;
 		-p|--package)
-			[ $# -gt 1 ] || die "missing parameter for \"-p|--package\" option"
+			[ $# -gt 1 ] || die "missing parameter for \"-p/--package\" option"
 			package="$2"
 			shift 2
 			;;
 		-o|--output)
-			[ $# -gt 1 ] || die "missing parameter for \"-o\" option"
+			[ $# -gt 1 ] || die "missing parameter for \"-o/--output\" option"
 			dest="$2"
 			shift 2
 			;;
@@ -112,7 +112,7 @@ type CacheNode struct {
 	ts    time.Time
 }
 
-// ${constructor} creates a new Cache with keys of type "K" and values of type "V".
+// $constructor creates a new Cache with keys of type "K" and values of type "V".
 func ${constructor}(size int, ttl time.Duration, fetch func(K) (V, error)) *Cache {
 	if size < 2 || size > 16*1024*1024 {
 		panic(fmt.Sprintf("attempted to create Cache with invalid capacity of %d items", size))

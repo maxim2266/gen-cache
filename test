@@ -18,9 +18,14 @@ while [ $# -gt 0 ]; do
 done
 
 # set-up
-cache_src='generated_cache_for_testing.go'
+cache_src=$(mktemp --suffix='.go' -p .)
 
-[ "$keep" ] || trap 'rm -f "$cache_src"' EXIT INT TERM QUIT HUP
+if [ "$keep" ]
+then
+	trap 'rm -f "$cache_src"' INT TERM QUIT HUP
+else
+	trap 'rm -f "$cache_src"' EXIT INT TERM QUIT HUP
+fi
 
 # generate code and run tests
 ./gen-cache -k int -v int -n myCache -p main -o "$cache_src"
