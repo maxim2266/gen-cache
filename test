@@ -11,7 +11,7 @@ exec 0<&-
 # process parameters
 while [ $# -gt 0 ]; do
 	case "$1" in
-		-k|--keep)		keep="yes"; shift ;;
+		-k|--keep)		keep='yes'; shift ;;
 		-v|--verbose)	opt='-v'; shift ;;
 		*)				die "unknown option \"$1\"" ;;
 	esac
@@ -23,5 +23,5 @@ cache_src='generated_cache_for_testing.go'
 [ "$keep" ] || trap 'rm -f "$cache_src"' EXIT INT TERM QUIT HUP
 
 # generate code and run tests
-./gen-cache -k int -v int -n my -p main -o "$cache_src"
+./gen-cache -k int -v int -n myCache -p main -o "$cache_src"
 go test "$opt"

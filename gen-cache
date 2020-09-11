@@ -2,7 +2,7 @@
 
 usage() {
 	cat >&2 <<EOF
-Usage: $(basename "$0") -k/--key TYPE -v/--value TYPE -n/--name NAME -p/--package NAME [-o FILE]
+Usage: $(basename "$0") -k/--key TYPE -v/--value TYPE -n/--name NAME -p/--package NAME [-o/--output FILE]
   Generate Go source code for a cache for the given types of keys and values,
   with the given name, and included in the given package.
 EOF
@@ -45,7 +45,7 @@ while [ $# -gt 0 ]; do
 			package="$2"
 			shift 2
 			;;
-		-o)
+		-o|--output)
 			[ $# -gt 1 ] || die "missing parameter for \"-o\" option"
 			dest="$2"
 			shift 2
@@ -68,9 +68,9 @@ l_name=$(echo "$name" | sed 's/^[[:upper:]]/\L&/')
 
 if [ "$u_name" = "$name" ]
 then
-	constructor="New${u_name}Cache"
+	constructor="New${u_name}"
 else
-	constructor="new${u_name}Cache"
+	constructor="new${u_name}"
 fi
 
 # code generator
@@ -78,8 +78,8 @@ gen() {
 	sed -E	\
 		-e "s/\\<K\\>/$key/g"	\
 		-e "s/\\<V\\>/$value/g"	\
-		-e "s/\\<Cache\\>/${name}Cache/g"	\
-		-e "s/\\<CacheNode\\>/${l_name}CacheNode/g"	\
+		-e "s/\\<Cache\\>/${name}/g"	\
+		-e "s/\\<CacheNode\\>/${l_name}Node/g"	\
 	| goimports
 }
 
