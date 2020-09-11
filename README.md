@@ -45,7 +45,7 @@ Constructor parameters:
 	The function may take a long time to produce the result, this is not going to block access to
 	the entire cache, only to the corresponding value.
 
-	<br>The constructor function returns a pointer to a newly created cache object.
+	The constructor function returns a pointer to a newly created cache object.
 
 The cache object has two methods:
 * `Get(K) (V, error)`: given a key, it returns the corresponding value, or an error. On cache miss
