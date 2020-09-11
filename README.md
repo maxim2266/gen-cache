@@ -2,12 +2,11 @@
 
 [![License: BSD 3 Clause](https://img.shields.io/badge/License-BSD_3--Clause-yellow.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
-#### Invocation
+### Invocation
 
 Example:
 ```sh
-gen-cache --name UserInfoCache --key int --value '*UserInfo' \
-	--package main --output user_info_cache.go
+gen-cache --name UserInfoCache --key int --value '*UserInfo' --package main --output user_info_cache.go
 ```
 
 This command generates source code for a cache that stores values of type `*UserInfo`
@@ -24,7 +23,7 @@ to `stdout`.
 
 Typically, the code generator is invoked using `//go:generate` command from a Go source file.
 
-#### API
+### API
 
 For any given types `K` (for the key) and `V` (for the value), and any given name `${name}`,
 the generated code will define:
@@ -32,12 +31,12 @@ the generated code will define:
 * An opaque type `${name}` to represent the cache. There may be multiple caches in one Go
 package, as long as their names are different.
 
-* A cache constructor in the form <br>
-`func [Nn]ew${name}(size int, ttl time.Duration, fetch func(K) (V, error)) *${name}`<br>
+* A cache constructor in the form <br><br>
+`func [Nn]ew${name}(size int, ttl time.Duration, fetch func(K) (V, error)) *${name}`<br><br>
 where the first letter is capital if the first letter of the given name is capital,
 to obey Go visibility rules. For example, if `K` is `int`, `V` is `*UserInfo`, and the name is
-`UserInfoCache`, then the constructor function will be<br>
-`func NewUserInfoCache(size int, ttl time.Duration, fetch func(int) (*UserInfo, error)) *UserInfoCache`<br>
+`UserInfoCache`, then the constructor function will be<br><br>
+`func NewUserInfoCache(size int, ttl time.Duration, fetch func(int) (*UserInfo, error)) *UserInfoCache`<br><br>
 Constructor parameters:
 	* A maximum size of the cache (a positive integer);
 	* A time-to-live for cache elements (can be set to something like one year if not needed);
@@ -45,7 +44,8 @@ Constructor parameters:
 	for the given key, or an error. Both the value _and_ the error are stored in the cache.
 	The function may take a long time to produce the result, this is not going to block access to
 	the entire cache, only to the corresponding value.
-The constructor function returns a pointer to a newly created cache object.
+
+	<br>The constructor function returns a pointer to a newly created cache object.
 
 The cache object has two methods:
 * `Get(K) (V, error)`: given a key, it returns the corresponding value, or an error. On cache miss
@@ -56,6 +56,6 @@ back-end function, and the entire cache object may be considered as just a wrapp
 
 The cache object is safe for concurrent access.
 
-#### Status
+### Status
 
 Tested on Linux Mint 20 with Go version 1.15.2.
