@@ -32,18 +32,22 @@ the generated code will define:
 package, as long as their names are different.
 
 * A cache constructor in the form <br><br>
-`func [Nn]ew${name}(size int, ttl time.Duration, fetch func(K) (V, error)) *${name}`<br><br>
+```Go
+func [Nn]ew${name}(size int, ttl time.Duration, fetch func(K) (V, error)) *${name}
+```
 where the first letter is capital if the first letter of the given name is capital,
 to obey Go visibility rules. For example, if `K` is `int`, `V` is `*UserInfo`, and the name is
-`UserInfoCache`, then the constructor function will be<br><br>
-`func NewUserInfoCache(size int, ttl time.Duration, fetch func(int) (*UserInfo, error)) *UserInfoCache`<br><br>
+`UserInfoCache`, then the constructor function will be
+```Go
+func NewUserInfoCache(size int, ttl time.Duration, fetch func(int) (*UserInfo, error)) *UserInfoCache
+```
 Constructor parameters:
 	* A maximum size of the cache (a positive integer);
 	* A time-to-live for cache elements (can be set to something like one year if not needed);
 	* A back-end function to call when a cache miss occurs. The function is expected to return a value
 	for the given key, or an error. Both the value _and_ the error are stored in the cache.
-	The function may take a long time to produce the result, this is not going to block access to
-	the entire cache, only to the corresponding value.
+	The function may be slow, but this is not going to block access to the entire cache, only
+	to the corresponding value.
 
 	The constructor function returns a pointer to a newly created cache object.
 
