@@ -42,9 +42,9 @@ package, as long as their names are different.
 	func NewUserInfoCache(size int, ttl time.Duration, fetch func(int) (*UserInfo, error)) *UserInfoCache
 	```
 	Constructor parameters:
-		* A maximum size of the cache (a positive integer);
-		* A time-to-live for cache elements (can be set to something like one year if not needed);
-		* A back-end function to call when a cache miss occurs. The function is expected to return a value
+	* A maximum size of the cache (a positive integer);
+	* A time-to-live for cache elements (can be set to something like one year if not needed);
+	* A back-end function to call when a cache miss occurs. The function is expected to return a value
 		for the given key, or an error. Both the value _and_ the error are stored in the cache.
 		The function may be slow, but this is not going to block access to the entire cache, only
 		to the corresponding value.
