@@ -82,7 +82,7 @@ func fill(fn func(int) (int, error), keys []int, valid func(int) bool) error {
 }
 
 // validate cache content by inspecting its internals; in LRU order
-func checkState(c *Cache, keys []int, valid func(int) bool) error {
+func checkState(c *myCache, keys []int, valid func(int) bool) error {
 	// initial checks
 	if len(c.cache) != len(keys) {
 		return fmt.Errorf("unexpected size of cache map: %d instead of %d",
@@ -147,7 +147,7 @@ func checkState(c *Cache, keys []int, valid func(int) bool) error {
 }
 
 // check if the cache is empty
-func assertEmpty(c *Cache) error {
+func assertEmpty(c *myCache) error {
 	if c.lru != nil {
 		return errors.New("non-null LRU pointer")
 	}
@@ -160,7 +160,7 @@ func assertEmpty(c *Cache) error {
 }
 
 // dump cache LRU list, from least to most recent
-func dumpLRU(cache *Cache) string {
+func dumpLRU(cache *myCache) string {
 	if cache.lru == nil {
 		return "LRU: (empty)"
 	}
@@ -182,7 +182,7 @@ func dumpLRU(cache *Cache) string {
 	return res.String()
 }
 
-func dumpRevLRU(cache *Cache) string {
+func dumpRevLRU(cache *myCache) string {
 	if cache.lru == nil {
 		return "LRU: (empty)"
 	}

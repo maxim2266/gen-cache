@@ -12,7 +12,7 @@ import (
 func TestOneRecord(t *testing.T) {
 	var backend tracingBackend
 
-	cache := New(5, time.Hour, backend.fn)
+	cache := newMyCache(5, time.Hour, backend.fn)
 
 	if err := assertEmpty(cache); err != nil {
 		t.Error("new cache is not empty:", err)
@@ -78,7 +78,7 @@ func TestFewRecords(t *testing.T) {
 		err     error
 	)
 
-	cache := New(2, time.Hour, backend.fn)
+	cache := newMyCache(2, time.Hour, backend.fn)
 
 	if err = assertEmpty(cache); err != nil {
 		t.Error("new cache is not empty:", err)
@@ -112,7 +112,7 @@ func TestCacheOperation(t *testing.T) {
 		err     error
 	)
 
-	cache := New(cacheSize, time.Hour, backend.fn)
+	cache := newMyCache(cacheSize, time.Hour, backend.fn)
 
 	if err = fill(cache.Get, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, backend.validKey); err != nil {
 		t.Error("error filling the cache:", err)
@@ -177,7 +177,7 @@ func TestRandomFill(t *testing.T) {
 
 	const cacheSize = 90
 
-	cache := New(cacheSize, time.Hour, backend.fn)
+	cache := newMyCache(cacheSize, time.Hour, backend.fn)
 	get := func(k int) (int, error) {
 		calls++
 		return cache.Get(k)
@@ -219,7 +219,7 @@ func TestConcurrentAccess(t *testing.T) {
 		calls   uint64
 	)
 
-	cache := New(cacheSize, 500*time.Microsecond, backend.fn)
+	cache := newMyCache(cacheSize, 500*time.Microsecond, backend.fn)
 
 	get := func(k int) (int, error) {
 		atomic.AddUint64(&calls, 1)

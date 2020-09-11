@@ -1,3 +1,27 @@
-#!/bin/sh
+#!/bin/sh -e
 
-go test -v
+die() {
+	echo >&2 "$(basename "$0"): error:" "$@"
+	exit 1
+}
+
+# close stdin
+exec 0<&-
+
+# process parameters
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-k|--keep)		keep="yes"; shift ;;
+		-v|--verbose)	opt='-v'; shift ;;
+		*)				die "unknown option \"$1\"" ;;
+	esac
+done
+
+# set-up
+cache_src='generated_cache_for_testing.go'
+
+[ "$keep" ] || trap 'rm -f "$cache_src"' EXIT INT TERM QUIT HUP
+
+# generate code and run tests
+./gen-cache -k int -v int -n my -p main -o "$cache_src"
+go test "$opt"
