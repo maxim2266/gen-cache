@@ -97,8 +97,8 @@ type Cache struct {
 	cache map[K]*CacheNode
 	lru   *CacheNode
 
-	size  int
-	ttl   time.Duration
+	size    int
+	ttl     time.Duration
 	backend func(K) (V, error)
 }
 
@@ -123,9 +123,9 @@ func ${constructor}(size int, ttl time.Duration, backend func(K) (V, error)) *Ca
 	}
 
 	return &Cache{
-		cache: make(map[K]*CacheNode, size),
-		size:  size,
-		ttl:   ttl,
+		cache:   make(map[K]*CacheNode, size),
+		size:    size,
+		ttl:     ttl,
 		backend: backend,
 	}
 }
