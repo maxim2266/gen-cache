@@ -209,6 +209,35 @@ func TestRandomFill(t *testing.T) {
 	}
 }
 
+func TestCacheMiss(t *testing.T) {
+	const N = 1000
+
+	var trace []int
+
+	backend := func(k int) (int, error) {
+		trace = append(trace, k)
+		return -k, nil
+	}
+
+	cache := newMyCache(100, time.Hour, backend)
+
+	for i := 0; i < N; i++ {
+		getOne(cache, i)
+	}
+
+	if len(trace) != N {
+		t.Errorf("unexpected number of backend calls: %d intead of %d", len(trace), N)
+		return
+	}
+
+	for i := 0; i < N; i++ {
+		if trace[i] != i {
+			t.Errorf("unexpected key in backend trace: %d instead of %d", trace[i], i)
+			return
+		}
+	}
+}
+
 func TestConcurrentAccess(t *testing.T) {
 	const (
 		threads   = 1
@@ -286,7 +315,7 @@ func BenchmarkCache(b *testing.B) {
 
 	// warm-up
 	for k := 0; k < cacheSize; k++ {
-		if err := readExistingKey(cache, k); err != nil {
+		if err := getOne(cache, k); err != nil {
 			b.Error(err)
 			return
 		}
@@ -296,7 +325,7 @@ func BenchmarkCache(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if err := readExistingKey(cache, i%cacheSize); err != nil {
+		if err := getOne(cache, i%cacheSize); err != nil {
 			b.Error(err)
 			return
 		}
@@ -310,7 +339,7 @@ func BenchmarkContendedCache(b *testing.B) {
 
 	// warm-up
 	for k := 0; k < cacheSize; k++ {
-		if err := readExistingKey(cache, k); err != nil {
+		if err := getOne(cache, k); err != nil {
 			b.Error(err)
 			return
 		}
@@ -335,7 +364,7 @@ func BenchmarkContendedCache(b *testing.B) {
 					return
 				default:
 					for i := 0; i < 10000; i++ {
-						if err := readExistingKey(cache, i%cacheSize); err != nil {
+						if err := getOne(cache, i%cacheSize); err != nil {
 							b.Error(err)
 							cancel()
 							return
@@ -353,7 +382,7 @@ func BenchmarkContendedCache(b *testing.B) {
 		b.ResetTimer()
 
 		for i := 0; i < b.N; i++ {
-			if err := readExistingKey(cache, i%cacheSize); err != nil {
+			if err := getOne(cache, i%cacheSize); err != nil {
 				b.Error(err)
 				return
 			}
@@ -366,7 +395,7 @@ func BenchmarkContendedCache(b *testing.B) {
 	wg.Wait()
 }
 
-func readExistingKey(cache *myCache, k int) error {
+func getOne(cache *myCache, k int) error {
 	v, err := cache.Get(k)
 
 	if err != nil {
