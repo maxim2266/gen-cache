@@ -34,14 +34,14 @@ package, as long as their names are different.
 * A cache constructor in the form
 	```Go
 	func [Nn]ew${name}(size int, ttl time.Duration,
-	                   fetch func(K) (V, error)) *${name}
+	                   backend func(K) (V, error)) *${name}
 	```
 	where the first letter of the function name is capital if the first letter of the given name
 	is also capital, to follow Go visibility rules. For example, if `K` is `int`, `V` is `*UserInfo`,
 	and the name is `UserInfoCache`, then the constructor function will be generated as
 	```Go
 	func NewUserInfoCache(size int, ttl time.Duration,
-	                      fetch func(int) (*UserInfo, error)) *UserInfoCache
+	                      backend func(int) (*UserInfo, error)) *UserInfoCache
 	```
 	Parameters:
 	* A maximum size of the cache (a positive integer);
@@ -53,11 +53,12 @@ package, as long as their names are different.
 
 	The constructor returns a pointer to a newly created cache object.
 
-The cache object has two methods:
+A cache object has two (public) methods:
 * `Get(K) (V, error)`: given a key, it returns the corresponding value, or an error. On cache miss
 the result is transparently retrieved from the back-end. The cache itself does not produce any error,
 so all the errors are from the back-end. Notably, this method has the same signature as the
-back-end function, and the entire cache object may be considered as just a wrapper around that function.
+back-end function, and it may be considered as a wrapper around the back-end that adds
+[memoisation](https://en.wikipedia.org/wiki/Memoization).
 * `Delete(K)`: deletes the specified key from the cache.
 
 The cache object is safe for concurrent access.

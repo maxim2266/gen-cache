@@ -99,7 +99,7 @@ type Cache struct {
 
 	size  int
 	ttl   time.Duration
-	fetch func(K) (V, error)
+	backend func(K) (V, error)
 }
 
 type CacheNode struct {
@@ -113,20 +113,20 @@ type CacheNode struct {
 }
 
 // $constructor creates a new Cache with keys of type "K" and values of type "V".
-func ${constructor}(size int, ttl time.Duration, fetch func(K) (V, error)) *Cache {
+func ${constructor}(size int, ttl time.Duration, backend func(K) (V, error)) *Cache {
 	if size < 2 || size > 16*1024*1024 {
 		panic(fmt.Sprintf("attempted to create Cache with invalid capacity of %d items", size))
 	}
 
-	if fetch == nil {
-		panic("attempted to create Cache with nil fetch() function")
+	if backend == nil {
+		panic("attempted to create Cache with nil backend() function")
 	}
 
 	return &Cache{
 		cache: make(map[K]*CacheNode, size),
 		size:  size,
 		ttl:   ttl,
-		fetch: fetch,
+		backend: backend,
 	}
 }
 
@@ -142,7 +142,7 @@ func (c *Cache) Get(key K) (V, error) {
 			}
 		}()
 
-		node.value, node.err = c.fetch(key)
+		node.value, node.err = c.backend(key)
 	})
 
 	return node.value, node.err
