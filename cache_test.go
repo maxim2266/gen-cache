@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"math"
 	"math/rand"
 	"sync"
@@ -274,4 +276,106 @@ func TestConcurrentAccess(t *testing.T) {
 		t.Errorf("cache efficiency: %.2f%% instead of %.2f%%", ratio, exp)
 		return
 	}
+}
+
+// benchmarks ---------------------------------------------------------------------------
+func BenchmarkCache(b *testing.B) {
+	const cacheSize = 100
+
+	cache := newMyCache(cacheSize, time.Hour, simpleBackend)
+
+	// warm-up
+	for k := 0; k < cacheSize; k++ {
+		if err := readExistingKey(cache, k); err != nil {
+			b.Error(err)
+			return
+		}
+	}
+
+	// run
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if err := readExistingKey(cache, i%cacheSize); err != nil {
+			b.Error(err)
+			return
+		}
+	}
+}
+
+func BenchmarkContendedCache(b *testing.B) {
+	const cacheSize = 100
+
+	cache := newMyCache(cacheSize, time.Hour, simpleBackend)
+
+	// warm-up
+	for k := 0; k < cacheSize; k++ {
+		if err := readExistingKey(cache, k); err != nil {
+			b.Error(err)
+			return
+		}
+	}
+
+	// start background readers
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var wg sync.WaitGroup
+
+	const numReaders = 10
+
+	wg.Add(numReaders)
+
+	for i := 0; i < numReaders; i++ {
+		go func() {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					for i := 0; i < 10000; i++ {
+						if err := readExistingKey(cache, i%cacheSize); err != nil {
+							b.Error(err)
+							cancel()
+							return
+						}
+					}
+				}
+			}
+		}()
+	}
+
+	// run
+	test := func() {
+		defer cancel()
+
+		b.ResetTimer()
+
+		for i := 0; i < b.N; i++ {
+			if err := readExistingKey(cache, i%cacheSize); err != nil {
+				b.Error(err)
+				return
+			}
+		}
+
+		b.StopTimer()
+	}
+
+	test()
+	wg.Wait()
+}
+
+func readExistingKey(cache *myCache, k int) error {
+	v, err := cache.Get(k)
+
+	if err != nil {
+		return fmt.Errorf("unexpected error for key %d: %w", k, err)
+	}
+
+	if v != -k {
+		return fmt.Errorf("value mismatch for key %d: %d instead of %d", k, v, -k)
+	}
+
+	return nil
 }

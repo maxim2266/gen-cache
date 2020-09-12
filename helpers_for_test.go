@@ -46,6 +46,16 @@ func (b *intBackendMT) validKey(key int) bool {
 	return key >= 0 && key < 100
 }
 
+// simple backend
+func simpleBackend(key int) (int, error) {
+	if key >= 0 && key < 100 {
+		return -key, nil
+	}
+
+	return 0, fmt.Errorf("key not found: %d", key)
+}
+
+// compare execution traces
 func matchTraces(got, exp []int) error {
 	if len(got) != len(exp) {
 		return fmt.Errorf("trace mismatch: %v instead of %v", got, exp)
