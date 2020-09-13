@@ -1,4 +1,4 @@
-# Go code generator for LRU cache
+# LRU cache code generator
 
 [![License: BSD 3 Clause](https://img.shields.io/badge/License-BSD_3--Clause-yellow.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
