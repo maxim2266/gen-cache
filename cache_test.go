@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"math/rand"
 	"sync"
@@ -33,7 +32,7 @@ func TestOneRecord(t *testing.T) {
 		t.Errorf("unexpected value: %d instead of -5", v)
 	}
 
-	if err = checkState(cache, []int{5}, backend.validKey); err != nil {
+	if err = checkState(cache, []int{5}, validKey); err != nil {
 		t.Error("error after the first insert:", err)
 		return
 	}
@@ -54,7 +53,7 @@ func TestOneRecord(t *testing.T) {
 		return
 	}
 
-	if err = checkState(cache, []int{1000}, backend.validKey); err != nil {
+	if err = checkState(cache, []int{1000}, validKey); err != nil {
 		t.Error("error after the first insert:", err)
 		return
 	}
@@ -87,12 +86,12 @@ func TestFewRecords(t *testing.T) {
 		return
 	}
 
-	if err = fill(cache.Get, []int{1, 2, 3}, backend.validKey); err != nil {
+	if err = fill(cache.Get, []int{1, 2, 3}, validKey); err != nil {
 		t.Error("error filling the cache:", err)
 		return
 	}
 
-	if err = checkState(cache, []int{2, 3}, backend.validKey); err != nil {
+	if err = checkState(cache, []int{2, 3}, validKey); err != nil {
 		t.Error("invalid state after fill:", err)
 		t.Log(dumpLRU(cache))
 		return
@@ -116,37 +115,37 @@ func TestCacheOperation(t *testing.T) {
 
 	cache := newMyCache(cacheSize, time.Hour, backend.fn)
 
-	if err = fill(cache.Get, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, backend.validKey); err != nil {
+	if err = fill(cache.Get, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, validKey); err != nil {
 		t.Error("error filling the cache:", err)
 		return
 	}
 
 	// LRU: {5, 6, 7, 8, 9}
-	if err = checkState(cache, []int{5, 6, 7, 8, 9}, backend.validKey); err != nil {
+	if err = checkState(cache, []int{5, 6, 7, 8, 9}, validKey); err != nil {
 		t.Error("invalid cache state:", err)
 		t.Log(dumpLRU(cache))
 		return
 	}
 
-	if err = fill(cache.Get, []int{6, 7}, backend.validKey); err != nil {
+	if err = fill(cache.Get, []int{6, 7}, validKey); err != nil {
 		t.Error("error filling the cache:", err)
 		return
 	}
 
 	// LRU: {5, 8, 9, 6, 7}
-	if err = checkState(cache, []int{5, 8, 9, 6, 7}, backend.validKey); err != nil {
+	if err = checkState(cache, []int{5, 8, 9, 6, 7}, validKey); err != nil {
 		t.Error("invalid cache state:", err)
 		t.Log(dumpLRU(cache))
 		return
 	}
 
-	if err = fill(cache.Get, []int{42, 9}, backend.validKey); err != nil {
+	if err = fill(cache.Get, []int{42, 9}, validKey); err != nil {
 		t.Error("error filling the cache:", err)
 		return
 	}
 
 	// LRU: {8, 6, 7, 42, 9}
-	if err = checkState(cache, []int{8, 6, 7, 42, 9}, backend.validKey); err != nil {
+	if err = checkState(cache, []int{8, 6, 7, 42, 9}, validKey); err != nil {
 		t.Error("invalid cache state:", err)
 		t.Log(dumpLRU(cache))
 		return
@@ -157,7 +156,7 @@ func TestCacheOperation(t *testing.T) {
 	cache.Delete(9)
 
 	// LRU: {7, 42}
-	if err = checkState(cache, []int{7, 42}, backend.validKey); err != nil {
+	if err = checkState(cache, []int{7, 42}, validKey); err != nil {
 		t.Error("invalid cache state:", err)
 		t.Log(dumpLRU(cache))
 		return
@@ -191,7 +190,7 @@ func TestRandomFill(t *testing.T) {
 		keys[i] = rand.Intn(100)
 	}
 
-	if err := fill(get, keys[:], backend.validKey); err != nil {
+	if err := fill(get, keys[:], validKey); err != nil {
 		t.Error("error filling the cache:", err)
 		return
 	}
@@ -275,7 +274,7 @@ func TestConcurrentAccess(t *testing.T) {
 				for _, k := range keys {
 					v, err := get(k)
 
-					if backend.validKey(k) {
+					if validKey(k) {
 						if err != nil {
 							t.Errorf("unexpected error: %w", err)
 							return
@@ -393,18 +392,4 @@ func BenchmarkContendedCache(b *testing.B) {
 
 	test()
 	wg.Wait()
-}
-
-func getOne(cache *myCache, k int) error {
-	v, err := cache.Get(k)
-
-	if err != nil {
-		return fmt.Errorf("unexpected error for key %d: %w", k, err)
-	}
-
-	if v != -k {
-		return fmt.Errorf("value mismatch for key %d: %d instead of %d", k, v, -k)
-	}
-
-	return nil
 }

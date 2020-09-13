@@ -15,15 +15,11 @@ type tracingBackend struct {
 func (b *tracingBackend) fn(key int) (int, error) {
 	b.trace = append(b.trace, key)
 
-	if b.validKey(key) {
+	if validKey(key) {
 		return -key, nil
 	}
 
 	return 0, fmt.Errorf("key not found: %d", key)
-}
-
-func (b *tracingBackend) validKey(key int) bool {
-	return key >= 0 && key < 100
 }
 
 // thread-safe backend with hit/miss counters
@@ -32,7 +28,7 @@ type intBackendMT struct {
 }
 
 func (b *intBackendMT) fn(key int) (int, error) {
-	if b.validKey(key) {
+	if validKey(key) {
 		atomic.AddUint64(&b.hit, 1)
 		return -key, nil
 	}
@@ -42,17 +38,17 @@ func (b *intBackendMT) fn(key int) (int, error) {
 	return 0, fmt.Errorf("key not found: %d", key)
 }
 
-func (b *intBackendMT) validKey(key int) bool {
-	return key >= 0 && key < 100
-}
-
 // simple backend
 func simpleBackend(key int) (int, error) {
-	if key >= 0 && key < 100 {
+	if validKey(key) {
 		return -key, nil
 	}
 
 	return 0, fmt.Errorf("key not found: %d", key)
+}
+
+func validKey(key int) bool {
+	return key >= 0 && key < 100
 }
 
 // compare execution traces
@@ -65,6 +61,21 @@ func matchTraces(got, exp []int) error {
 		if v != exp[i] {
 			return fmt.Errorf("trace mismatch @ %d: %d instead of %d", i, v, exp[i])
 		}
+	}
+
+	return nil
+}
+
+// get one valid record
+func getOne(cache *myCache, k int) error {
+	v, err := cache.Get(k)
+
+	if err != nil {
+		return fmt.Errorf("unexpected error for key %d: %w", k, err)
+	}
+
+	if v != -k {
+		return fmt.Errorf("value mismatch for key %d: %d instead of %d", k, v, -k)
 	}
 
 	return nil
