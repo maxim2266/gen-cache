@@ -143,7 +143,7 @@ func (c *Cache) Get(key K) (V, error) {
 			}
 		}()
 
-		node.value, node.err = c.backend(key)
+		node.value, node.err = c.backend(node.key)
 	})
 
 	return node.value, node.err

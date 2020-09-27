@@ -48,7 +48,7 @@ package, as long as their names are different.
 	* A time-to-live for cache elements (can be set to something like one year if not needed);
 	* A back-end function to call when a cache miss occurs. The function is expected to return a value
 		for the given key, or an error. Both the value _and_ the error are stored in the cache.
-		Slow back-end function is not going to block access to the entire cache, only to the
+		A slow back-end function is not going to block access to the entire cache, only to the
 		corresponding value.
 
 	The constructor returns a pointer to a newly created cache object.
