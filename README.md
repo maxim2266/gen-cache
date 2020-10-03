@@ -63,6 +63,20 @@ back-end function, and it may be considered as a wrapper around the back-end tha
 
 The cache object is safe for concurrent access.
 
+### Benchmarks
+
+The following results are achieved on Intel Core i5-8500T processor under Linux Mint 20:
+
+```
+BenchmarkCache-6            	17559235	        66.6 ns/op
+BenchmarkContendedCache-6   	  604989	      1852 ns/op
+```
+
+The benchmark is run by invoking `./test -b` from the root directory of the project. The script
+generates and tests a cache with integer keys and values. The first benchmark reads the cache from
+a single goroutine, while the second one does the same in parallel with another 10 goroutines accessing
+the cache concurrently.
+
 ### Status
 
 Tested on Linux Mint 20 with Go version 1.15.2.
