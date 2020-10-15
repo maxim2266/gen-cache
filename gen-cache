@@ -166,11 +166,14 @@ func (c *Cache) get(key K) (node *CacheNode) {
 	defer c.mu.Unlock()
 
 	if node = c.cache[key]; node != nil { // found
-		c.lruRemove(node)
-
 		if time.Since(node.ts) > c.ttl {
+			c.lruRemove(node)
 			node.next, node.prev = nil, nil // help gc
 			node = c.newNode(node.key)
+		} else if node == c.lru.next { // most recent
+			return
+		} else {
+			c.lruRemove(node)
 		}
 	} else { // not found
 		if len(c.cache) == c.size { // cache full
