@@ -11,7 +11,7 @@ gen-cache --name UserInfoCache --key int --value '*UserInfo' \
 ```
 This command generates source code for a cache that stores values of type `*UserInfo`
 with keys of type `int`. The cache object is named `UserInfoCache`, it resides in the package `main`,
-and the source code is written to the file `user_info_cache.go`.
+and the generated code is stored in the file `user_info_cache.go`.
 
 In general, the command has the following form:
 ```
@@ -43,10 +43,10 @@ package, as long as their names are different.
 	func NewUserInfoCache(size int, ttl time.Duration,
 	                      backend func(int) (*UserInfo, error)) *UserInfoCache
 	```
-	Parameters:
-	* A maximum size of the cache (a positive integer);
-	* A time-to-live for cache elements (can be set to something like one year if not needed);
-	* A back-end function to call when a cache miss occurs. The function is expected to return a value
+	Constructor parameters:
+	* Maximum size of the cache (a positive integer);
+	* Time-to-live for cache elements (can be set to something like one year if not needed);
+	* Back-end function to call when a cache miss occurs. The function is expected to return a value
 		for the given key, or an error. Both the value _and_ the error are stored in the cache.
 		A slow back-end function is not going to block access to the entire cache, only to the
 		corresponding value.
@@ -65,18 +65,19 @@ The cache object is safe for concurrent access.
 
 ### Benchmarks
 
-The following results are achieved on Intel Core i5-8500T processor under Linux Mint 20:
+The following results have been achieved on Intel Core i5-8500T processor running Linux Mint 20.3
+(with Go v1.17.6):
 
 ```
-BenchmarkCache-6            	17559235	        66.6 ns/op
-BenchmarkContendedCache-6   	  604989	      1852 ns/op
+BenchmarkCache-6            	17759829	        64.92 ns/op
+BenchmarkContendedCache-6   	  707421	      1505 ns/op
 ```
 
 The benchmark is run by invoking `./test -b` from the root directory of the project. The script
 generates and tests a cache with integer keys and values. The first benchmark reads the cache from
-a single goroutine, while the second one does the same in parallel with another 10 goroutines accessing
-the cache concurrently.
+a single goroutine, while the second one is the same benchmark run in parallel with another 10 goroutines
+accessing the cache concurrently.
 
 ### Status
 
-Tested on Linux Mint 20 with Go version 1.15.2.
+Tested on Linux Mint 20.3 with Go version 1.17.6.
