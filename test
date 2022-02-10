@@ -9,9 +9,11 @@ die() {
 exec 0<&-
 
 # process parameters
+cleanup='yes'
+
 while [ $# -gt 0 ]; do
 	case "$1" in
-		-k|--keep)		keep='yes'; shift ;;
+		-k|--keep)		unset cleanup; shift ;;
 		-b|--bench)		bench='yes'; shift ;;
 		-v|--verbose)	opt='-v'; shift ;;
 		*)				die "unknown option \"$1\"" ;;
@@ -21,19 +23,8 @@ done
 # set-up
 cache_src=$(mktemp --suffix='.go' -p .)
 
-if [ "$keep" ]
-then
-	trap 'rm -f "$cache_src"' INT TERM QUIT HUP
-else
-	trap 'rm -f "$cache_src"' EXIT INT TERM QUIT HUP
-fi
+trap 'rm -f "$cache_src"' ${cleanup:+EXIT} INT TERM QUIT HUP
 
 # generate code and run tests
 ./gen-cache -k int -v int -n myCache -p main -o "$cache_src"
-
-if [ "$bench" ]
-then
-	go test "$opt" -bench .
-else
-	go test "$opt"
-fi
+go test "$opt" ${bench:+-bench .}
