@@ -2,6 +2,8 @@
 
 [![License: BSD 3 Clause](https://img.shields.io/badge/License-BSD_3--Clause-yellow.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
+_Note:_ A version of this cache written using Go generics is [here](https://godoc.org/github.com/maxim2266/cache).
+
 ### Invocation
 
 Example:
